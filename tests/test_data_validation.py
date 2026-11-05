@@ -64,3 +64,14 @@ def test_bad_target_labels_fail(tmp_path):
     f = tmp_path / "bad_target.csv"
     df.to_csv(f, index=False)
     assert DataValidation(_config(tmp_path, f)).validate() is False
+
+
+def test_missing_target_fails(tmp_path):
+    # A row with a valid label plus a row whose target is blank.
+    good = _valid_frame()
+    missing = _valid_frame()
+    missing["default"] = [None]
+    df = pd.concat([good, missing], ignore_index=True)
+    f = tmp_path / "missing_target.csv"
+    df.to_csv(f, index=False)
+    assert DataValidation(_config(tmp_path, f)).validate() is False

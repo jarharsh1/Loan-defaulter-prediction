@@ -46,6 +46,13 @@ class DataTransformation:
         df = pd.read_csv(self.config.data_file)
         target = self.config.target_column
 
+        # Guard: never fabricate labels. Validation rejects missing targets, but
+        # drop any that slip through here rather than encoding them as class 0.
+        n_missing = int(df[target].isna().sum())
+        if n_missing:
+            logger.warning("Dropping %d row(s) with a missing target.", n_missing)
+            df = df.dropna(subset=[target])
+
         # Encode target to 0/1 (yes -> 1 = defaulter).
         df[target] = (df[target].astype(str).str.lower() == "yes").astype(int)
 

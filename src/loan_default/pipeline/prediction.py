@@ -18,11 +18,20 @@ def _load_model():
     return load_object(model_file)
 
 
+@lru_cache(maxsize=1)
+def _default_threshold() -> float:
+    # Keep serving decisions consistent with the threshold used at evaluation.
+    return ConfigurationManager().get_model_evaluation_config().decision_threshold
+
+
 class PredictionPipeline:
     def __init__(self):
         self.model = _load_model()
+        self.threshold = _default_threshold()
 
-    def predict(self, features: dict, threshold: float = 0.5) -> dict:
+    def predict(self, features: dict, threshold: float | None = None) -> dict:
+        if threshold is None:
+            threshold = self.threshold
         df = pd.DataFrame([features])
         proba = float(self.model.predict_proba(df)[:, 1][0])
         is_default = proba >= threshold

@@ -50,8 +50,14 @@ class DataValidation:
             if df[col].isna().all():
                 errors.append(f"Column '{col}' is entirely null")
 
-        # 4. Target present and binary-ish.
+        # 4. Target present, complete, and binary-valued.
         if target in df.columns:
+            n_missing = int(df[target].isna().sum())
+            if n_missing:
+                errors.append(
+                    f"Target '{target}' has {n_missing} missing value(s); "
+                    "rows without a label cannot be used for training/evaluation"
+                )
             labels = set(df[target].dropna().unique())
             if not labels.issubset({"yes", "no"}):
                 errors.append(f"Target '{target}' has unexpected labels: {labels}")
