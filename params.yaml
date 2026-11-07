@@ -1,0 +1,18 @@
+# Experiment parameters for the loan-default model.
+# Tweak these and re-run `dvc repro` to track experiments.
+
+data_transformation:
+  test_size: 0.2
+  random_state: 42
+
+model_trainer:
+  # RandomForest keeps the original tree-based spirit while being stronger.
+  n_estimators: 200
+  max_depth: 10
+  min_samples_leaf: 5
+  class_weight: balanced
+  random_state: 42
+
+model_evaluation:
+  # Threshold used to turn probabilities into default / non-default labels.
+  decision_threshold: 0.5

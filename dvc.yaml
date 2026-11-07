@@ -1,0 +1,70 @@
+# Reproducible pipeline DAG. Run with `dvc repro`.
+# Each stage declares its deps, params and outs so DVC re-runs only what changed.
+
+stages:
+  data_ingestion:
+    cmd: python -m loan_default.pipeline.stage_01_data_ingestion
+    deps:
+      - src/loan_default/pipeline/stage_01_data_ingestion.py
+      - src/loan_default/components/data_ingestion.py
+      - data/raw/credit.csv
+    outs:
+      - artifacts/data_ingestion/credit.csv
+
+  data_validation:
+    cmd: python -m loan_default.pipeline.stage_02_data_validation
+    deps:
+      - src/loan_default/pipeline/stage_02_data_validation.py
+      - src/loan_default/components/data_validation.py
+      - artifacts/data_ingestion/credit.csv
+      - schema.yaml
+    outs:
+      - artifacts/data_validation/status.json:
+          cache: false
+
+  data_transformation:
+    cmd: python -m loan_default.pipeline.stage_03_data_transformation
+    deps:
+      - src/loan_default/pipeline/stage_03_data_transformation.py
+      - src/loan_default/components/data_transformation.py
+      - artifacts/data_ingestion/credit.csv
+      # Gate training on validation, and track the feature contract so a schema
+      # change regenerates the preprocessor/model/metrics.
+      - artifacts/data_validation/status.json
+      - schema.yaml
+    params:
+      - data_transformation.test_size
+      - data_transformation.random_state
+    outs:
+      - artifacts/data_transformation/train.csv
+      - artifacts/data_transformation/test.csv
+      - artifacts/data_transformation/preprocessor.joblib
+
+  model_trainer:
+    cmd: python -m loan_default.pipeline.stage_04_model_trainer
+    deps:
+      - src/loan_default/pipeline/stage_04_model_trainer.py
+      - src/loan_default/components/model_trainer.py
+      - artifacts/data_transformation/train.csv
+      - artifacts/data_transformation/preprocessor.joblib
+    params:
+      - model_trainer.n_estimators
+      - model_trainer.max_depth
+      - model_trainer.min_samples_leaf
+      - model_trainer.class_weight
+      - model_trainer.random_state
+    outs:
+      - artifacts/model_trainer/model.joblib
+
+  model_evaluation:
+    cmd: python -m loan_default.pipeline.stage_05_model_evaluation
+    deps:
+      - src/loan_default/pipeline/stage_05_model_evaluation.py
+      - src/loan_default/components/model_evaluation.py
+      - artifacts/data_transformation/test.csv
+      - artifacts/model_trainer/model.joblib
+    params:
+      - model_evaluation.decision_threshold
+    metrics:
+      - artifacts/model_evaluation/metrics.json:
+          cache: false
