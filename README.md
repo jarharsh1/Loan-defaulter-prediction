@@ -133,3 +133,24 @@ curl -X POST http://127.0.0.1:8000/predict \
 `credit.csv` is the reference dataset used throughout. The pipeline is
 data-agnostic: drop in a new file matching `schema.yaml`, run `dvc repro`, and
 every downstream stage re-runs automatically.
+
+## Use cases
+
+This repository is really a **reusable MLOps template for any tabular binary- or
+multi-class classification problem** — the credit-default dataset is just the
+worked example. The ingestion → validation → transformation → training →
+evaluation pipeline, DVC DAG, MLflow tracking, FastAPI serving, Docker and CI
+stay the same; you change the data and the `schema.yaml` contract.
+
+| Domain | Swap in | Predict |
+|--------|---------|---------|
+| **Credit / lending** *(shipped example)* | applicant records | loan default risk |
+| **Healthcare** | patient features | readmission, no-show, or disease risk |
+| **Churn** | customer/account features | will the customer leave |
+| **Insurance** | policyholder features | claim likelihood / fraud |
+| **HR** | employee features | attrition risk |
+| **Marketing** | lead features | conversion likelihood |
+
+To retarget: replace `data/raw/…`, update `schema.yaml` (columns, numeric vs.
+categorical, target), tune `params.yaml`, and run `dvc repro`. Everything
+downstream — the model artifact, metrics, and the `/predict` API — regenerates.
