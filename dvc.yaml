@@ -28,6 +28,10 @@ stages:
       - src/loan_default/pipeline/stage_03_data_transformation.py
       - src/loan_default/components/data_transformation.py
       - artifacts/data_ingestion/credit.csv
+      # Gate training on validation, and track the feature contract so a schema
+      # change regenerates the preprocessor/model/metrics.
+      - artifacts/data_validation/status.json
+      - schema.yaml
     params:
       - data_transformation.test_size
       - data_transformation.random_state
