@@ -57,14 +57,19 @@ def train() -> dict:
     """Trigger a full retrain. Resets the cached model on success."""
     global _pipeline
     try:
-        from loan_default.pipeline.prediction import _default_threshold, _load_model
+        from loan_default.pipeline.prediction import (
+            _default_threshold,
+            _feature_columns,
+            _load_model,
+        )
         from main import main as run_pipeline
 
         run_pipeline()
         # Drop the caches so the next request picks up the freshly trained model
-        # (and any changed threshold), not the stale lru_cache entries.
+        # (and any changed threshold/schema), not the stale lru_cache entries.
         _load_model.cache_clear()
         _default_threshold.cache_clear()
+        _feature_columns.cache_clear()
         _pipeline = None
         return {"status": "retrained"}
     except Exception as exc:
