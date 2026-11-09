@@ -53,8 +53,17 @@ class DataTransformation:
             logger.warning("Dropping %d row(s) with a missing target.", n_missing)
             df = df.dropna(subset=[target])
 
-        # Encode target to 0/1 (yes -> 1 = defaulter).
-        df[target] = (df[target].astype(str).str.lower() == "yes").astype(int)
+        # Encode target to 0/1 (yes -> 1 = defaulter). Assert the label set is
+        # {yes, no} first: the "== 'yes'" rule maps anything else to 0, so an
+        # unexpected label would be silently mislabeled. This mirrors the
+        # validation gate and defends against direct invocation of this stage.
+        labels = set(df[target].astype(str).str.strip().str.lower().unique())
+        if not labels.issubset({"yes", "no"}):
+            raise ValueError(
+                f"Target '{target}' has unexpected labels {sorted(labels)}; "
+                "expected only 'yes'/'no' (case-insensitive)."
+            )
+        df[target] = (df[target].astype(str).str.strip().str.lower() == "yes").astype(int)
 
         train_df, test_df = train_test_split(
             df,
