@@ -48,15 +48,22 @@ class ModelEvaluation:
             "precision": float(precision_score(y, preds, zero_division=0)),
             "recall": float(recall_score(y, preds, zero_division=0)),
             "f1": float(f1_score(y, preds, zero_division=0)),
-            "roc_auc": float(roc_auc_score(y, proba)),
         }
+        # ROC-AUC needs both classes present; record null (not a crash) if the
+        # test labels are single-class.
+        if y.nunique() < 2:
+            logger.warning("Only one class in y_true; ROC-AUC is undefined.")
+            metrics["roc_auc"] = None
+        else:
+            metrics["roc_auc"] = float(roc_auc_score(y, proba))
+
         save_json(self.config.metrics_file, metrics)
         logger.info("Evaluation metrics: %s", metrics)
 
-        self._log_to_mlflow(metrics)
+        self._log_to_mlflow(metrics, model)
         return metrics
 
-    def _log_to_mlflow(self, metrics: dict) -> None:
+    def _log_to_mlflow(self, metrics: dict, model) -> None:
         if not _MLFLOW_AVAILABLE:
             logger.warning("MLflow not installed; skipping experiment logging.")
             return
@@ -69,9 +76,9 @@ class ModelEvaluation:
                 if isinstance(params, dict):
                     for k, v in params.items():
                         mlflow.log_param(f"{section}.{k}", v)
-            mlflow.log_metrics(metrics)
+            # MLflow metrics must be numeric; drop any None (e.g. undefined AUC).
+            mlflow.log_metrics({k: v for k, v in metrics.items() if v is not None})
             try:
-                model = load_object(self.config.model_file)
                 mlflow.sklearn.log_model(model, name="model")
             except Exception as exc:  # pragma: no cover - logging best-effort
                 logger.warning("Could not log model to MLflow: %s", exc)
